@@ -21,15 +21,17 @@ python ssh_key_generator.py -t rsa -p user_list.txt
 
 - `-t` or `--key-type`: Specify the key type (default is `rsa`).
 - `-p` or `--passphrase`: Generate a random passphrase for each key.
+- `-e` or `--excel`: Export output to an Excel file.
 - `user_list`: Path to the user list file.
 
 ## Example
 
 ```bash
-python ssh_key_generator.py -t ed25519 -p user_list.txt
+./genpair -t ed25519 -p -e user_list.txt
 ```
 
-This command will generate ED25519 keys with random passphrases for each user listed in `user_list.txt`.
+This command will generate ED25519 keys with random passphrases for each
+user listed in `user_list.txt` and `user_list.xlsx`.
 
 ## Output
 
