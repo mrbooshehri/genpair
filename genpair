@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
+
 import argparse
 import os
 import subprocess
 import random
 import string
+from openpyxl import Workbook
 
 def generate_passphrase(length=16):
     # Generate a random passphrase
@@ -20,14 +22,31 @@ def create_ssh_key(username, key_type, passphrase, keys_home):
     fingerprint = subprocess.check_output(["ssh-keygen", "-lf", pub_key_path]).decode().split()[1].split(":")[1]
     return key_name, fingerprint
 
-def main():
+def export_to_excel(user_info_path, excel_file_path):
+    wb = Workbook()
+    ws = wb.active
+    ws.append(["USERNAME", "KEY_NAME", "PASS_PHRASE", "PUB_KEY_FINGERPRINT"])
 
+    with open(user_info_path, "r") as f:
+        next(f) # Skip the header line
+        for line in f:
+            username, key_name, passphrase, fingerprint = line.strip().split("|")
+            ws.append([username, key_name, passphrase, fingerprint])
+
+    wb.save(excel_file_path)
+
+def main():
     parser = argparse.ArgumentParser(description="Generate SSH keys for a list of users.")
     parser.add_argument("-t", "--key-type", default="rsa", help="Key type (default is rsa)")
     parser.add_argument("-p", "--passphrase", action="store_true", help="Generate random passphrase for each key")
+    parser.add_argument("-e", "--excel", action="store_true", help="Export output to an Excel file")
     parser.add_argument("user_list", help="Path to the user list file")
 
     args = parser.parse_args()
+
+    if not os.path.exists(args.user_list):
+        print(f"Error: The input file '{args.user_list}' does not exist.")
+        return
 
     keys_home = "output"
     os.makedirs(keys_home, exist_ok=True)
@@ -44,6 +63,11 @@ def main():
             key_name, fingerprint = create_ssh_key(username, args.key_type, passphrase, keys_home)
             with open(user_info_path, "a") as f:
                 f.write(f"{username}|{key_name}|{passphrase}|{fingerprint}\n")
+
+    if args.excel:
+        excel_file_path = "user_info.xlsx"
+        export_to_excel(user_info_path, excel_file_path)
+        print(f"Output exported to {excel_file_path}")
 
 if __name__ == "__main__":
     main()
