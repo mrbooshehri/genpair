@@ -1,0 +1,49 @@
+#!/usr/bin/env python3
+import argparse
+import os
+import subprocess
+import random
+import string
+
+def generate_passphrase(length=16):
+    # Generate a random passphrase
+    characters = string.ascii_letters + string.digits + string.punctuation
+    return ''.join(random.choice(characters) for _ in range(length))
+
+def create_ssh_key(username, key_type, passphrase, keys_home):
+    # Create SSH key
+    key_name = username.replace(" ", "_")
+    key_path = os.path.join(keys_home, f"{key_name}")
+    subprocess.run(["ssh-keygen", "-t", key_type, "-C", username, "-N", passphrase, "-f", key_path])
+    # Get the public key fingerprint
+    pub_key_path = f"{key_path}.pub"
+    fingerprint = subprocess.check_output(["ssh-keygen", "-lf", pub_key_path]).decode().split()[1].split(":")[1]
+    return key_name, fingerprint
+
+def main():
+
+    parser = argparse.ArgumentParser(description="Generate SSH keys for a list of users.")
+    parser.add_argument("-t", "--key-type", default="rsa", help="Key type (default is rsa)")
+    parser.add_argument("-p", "--passphrase", action="store_true", help="Generate random passphrase for each key")
+    parser.add_argument("user_list", help="Path to the user list file")
+
+    args = parser.parse_args()
+
+    keys_home = "output"
+    os.makedirs(keys_home, exist_ok=True)
+
+    user_info_path = "user_info"
+    if not os.path.exists(user_info_path):
+        with open(user_info_path, "w") as f:
+            f.write("USERNAME|KEY_NAME|PASS_PHRASE|PUB_KEY_FINGERPRINT\n")
+
+    with open(args.user_list, "r") as user_list_file:
+        for username in user_list_file:
+            username = username.strip()
+            passphrase = generate_passphrase() if args.passphrase else ""
+            key_name, fingerprint = create_ssh_key(username, args.key_type, passphrase, keys_home)
+            with open(user_info_path, "a") as f:
+                f.write(f"{username}|{key_name}|{passphrase}|{fingerprint}\n")
+
+if __name__ == "__main__":
+    main()
