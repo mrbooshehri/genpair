@@ -12,10 +12,12 @@ def generate_passphrase(length=16):
     characters = string.ascii_letters + string.digits + string.punctuation
     return ''.join(random.choice(characters) for _ in range(length))
 
-def create_ssh_key(username, key_type, passphrase, keys_home):
+def create_ssh_key(username, group, key_type, passphrase, keys_home):
     # Create SSH key
     key_name = username.replace(" ", "_")
-    key_path = os.path.join(keys_home, f"{key_name}")
+    key_group= os.path.join(keys_home, group)
+    key_path = os.path.join(key_group, key_name)
+    os.makedirs(key_group, exist_ok=True)
     subprocess.run(["ssh-keygen", "-t", key_type, "-C", username, "-N", passphrase, "-f", key_path])
     # Get the public key fingerprint
     pub_key_path = f"{key_path}.pub"
@@ -57,12 +59,15 @@ def main():
             f.write("USERNAME|KEY_NAME|PASS_PHRASE|PUB_KEY_FINGERPRINT\n")
 
     with open(args.user_list, "r") as user_list_file:
-        for username in user_list_file:
-            username = username.strip()
-            passphrase = generate_passphrase() if args.passphrase else ""
-            key_name, fingerprint = create_ssh_key(username, args.key_type, passphrase, keys_home)
-            with open(user_info_path, "a") as f:
-                f.write(f"{username}|{key_name}|{passphrase}|{fingerprint}\n")
+        for line in user_list_file:
+            if line is not "":
+               parts = line.strip().split('|')
+               group = parts[0].strip()
+               username = parts[1].strip()
+               passphrase = generate_passphrase() if args.passphrase else ""
+               key_name, fingerprint = create_ssh_key(username, group, args.key_type, passphrase, keys_home)
+               with open(user_info_path, "a") as f:
+                   f.write(f"{username}|{key_name}|{passphrase}|{fingerprint}\n")
 
     if args.excel:
         excel_file_path = "user_info.xlsx"
